@@ -1,5 +1,170 @@
 # Documentación: Creación y Edición de Event Planner
 
+## Campos mínimos para crear un Event Planner
+
+Para crear un Event Planner, **lo mínimo necesario** es:
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `name` | String | Nombre de la organización de eventos |
+| `code` | String | Código único del organizador de eventos (debe ser único) |
+
+### Ejemplo mínimo (payload)
+
+```json
+{
+  "name": "Mi Organización de Eventos",
+  "code": "ORG001"
+}
+```
+
+## Endpoints (crear y editar)
+
+### Crear Event Planner (self-service)
+
+```
+POST /api/v1/eventplanners/register
+```
+
+- **Auth**: `AuthUser` (requiere `Authorization: Bearer <token>`)
+- **Qué hace**:
+  - Crea un Event Planner con `adminId = user._id`
+  - Genera `code` automáticamente (no se envía en el payload)
+  - Actualiza el usuario autenticado para agregarle el event planner y asignarle `userRoll: "event_planner"`
+  - Retorna un `token` (JWT) junto al `eventPlanner`
+
+**Body (mínimo):**
+
+```json
+{
+  "organizationName": "Mi Organización de Eventos"
+}
+```
+
+> También acepta `name` como alternativa a `organizationName`. Campos opcionales: `contactEmail`, `logo`.
+
+**Ejemplo (curl):**
+
+```bash
+curl -X POST "http://localhost:3000/api/v1/eventplanners/register" ^
+  -H "Content-Type: application/json" ^
+  -H "Authorization: Bearer <TOKEN>" ^
+  -d "{\"organizationName\":\"Mi Organización de Eventos\"}"
+```
+
+### Crear Event Planner (public register - MVP)
+
+```
+POST /api/v1/eventplanners/public/register
+```
+
+- **Auth**: No requiere autenticación (público)
+- **Qué hace**:
+  - Crea un **usuario** con `userRoll: "event_planner"` (activo) y su información básica
+  - Crea un **Event Planner** y lo asigna al usuario como `adminId`
+  - Si `code` **no viene**, el sistema lo genera a partir del nombre (`organizationName` o `eventPlannerName`)
+  - Retorna un `token` (JWT) junto al `eventPlanner` y el `user` (sin `password`)
+- **Nota (MVP)**:
+  - La verificación previa de email existente está **comentada** intencionalmente; si el email ya existe, MongoDB puede responder con **409** por `duplicate key`.
+
+**Body (requerido):**
+
+```json
+{
+  "firstName": "Juan",
+  "lastName": "Pérez",
+  "password": "MiPassword123",
+  "phone": "04141234567",
+  "document": "V12345678",
+  "email": "juan@example.com",
+  "organizationName": "Mi Organización de Eventos"
+}
+```
+
+**Body (opcional):**
+
+```json
+{
+  "eventPlannerName": "Mi Organización de Eventos",
+  "code": "MIORG",
+  "contactEmail": "contacto@mi-org.com",
+  "logo": "https://example.com/logo.png"
+}
+```
+
+**Reglas de generación de `code` (cuando NO se envía `code`):**
+
+- Se toma el nombre (`organizationName || eventPlannerName || name`)
+- Se normaliza: sin acentos, sin espacios/símbolos, y en mayúsculas
+- Se toman los primeros **6** caracteres como base
+- Si ya existe, se intenta con sufijos: `BASE`, `BASE1`, `BASE2`, ... (hasta 10 intentos)
+
+**Ejemplo (curl):**
+
+```bash
+curl -X POST "http://localhost:3000/api/v1/eventplanners/public/register" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"firstName\":\"Juan\",\"lastName\":\"Pérez\",\"password\":\"MiPassword123\",\"phone\":\"04141234567\",\"document\":\"V12345678\",\"email\":\"juan@example.com\",\"organizationName\":\"Mi Organización de Eventos\"}"
+```
+
+**Respuesta exitosa (200):**
+
+```json
+{
+  "message": "Okey",
+  "eventPlanner": {
+    "_id": "507f1f77bcf86cd799439011",
+    "name": "Mi Organización de Eventos",
+    "code": "MIORGA",
+    "adminId": "507f1f77bcf86cd799439012"
+  },
+  "user": {
+    "_id": "507f1f77bcf86cd799439012",
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "phone": "04141234567",
+    "document": "V12345678",
+    "email": "juan@example.com",
+    "userRoll": "event_planner"
+  },
+  "token": "<JWT>"
+}
+```
+
+**Errores comunes:**
+
+- `400`: faltan datos requeridos (usuario o nombre del event planner)
+- `409`: `code` ya registrado (si lo envías) o email duplicado (por índice único)
+
+### Crear Event Planner (admin / sub-user)
+
+```
+POST /api/v1/users/register-sub-user
+```
+
+- **Auth**: `AdminUser`
+- **Cuándo usarlo**: cuando un admin crea un usuario con `userRoll: "event_planner"` y quiere crear el Event Planner “desde admin”.
+- **Nota**: en este flujo, `eventPlanner.code` **sí** debe venir y ser único.
+
+### Editar Event Planner (del Event Planner autenticado)
+
+```
+POST /api/v1/eventplanner/update
+```
+
+- **Auth**: `EventPlannerUser`
+- **Qué hace**: actualiza el Event Planner que viene del token (`httpRequest.user.eventPlanner`).
+- **Nota**: campos protegidos como `code`, `adminId`, `hidden`, etc. no se pueden modificar (ver sección “Campos que NO se pueden modificar”).
+
+**Ejemplo (curl):**
+
+```bash
+curl -X POST "http://localhost:3000/api/v1/eventplanner/update" ^
+  -H "Content-Type: application/json" ^
+  -H "Authorization: Bearer <TOKEN>" ^
+  -d "{\"contactEmail\":\"nuevo@email.com\",\"logo\":\"https://example.com/nuevo-logo.png\"}"
+```
+
 ## Descripción
 
 Esta documentación describe los campos disponibles para la **creación** y **edición** de un Event Planner (Organizador de Eventos) en el sistema.
