@@ -43,6 +43,31 @@ POST /api/v1/eventplanners/register
 
 > También acepta `name` como alternativa a `organizationName`. Campos opcionales: `contactEmail`, `logo`.
 
+### Theme (colores del Event Planner)
+
+Opcionalmente puedes enviar un objeto `theme` para que cada Event Planner tenga su propia paleta de colores (ideal para white-label).
+
+- **Formato**: colores en hex: `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA`
+- **Claves permitidas**:
+  - `primary`, `secondary`, `accent`
+  - `background`, `surface`
+  - `text`, `textOnPrimary`, `border`
+  - `success`, `warning`, `danger`
+
+Ejemplo:
+
+```json
+{
+  "theme": {
+    "primary": "#6D28D9",
+    "secondary": "#0EA5E9",
+    "background": "#0B1220",
+    "surface": "#111827",
+    "text": "#FFFFFF"
+  }
+}
+```
+
 **Ejemplo (curl):**
 
 ```bash
@@ -88,7 +113,13 @@ POST /api/v1/eventplanners/public/register
   "eventPlannerName": "Mi Organización de Eventos",
   "code": "MIORG",
   "contactEmail": "contacto@mi-org.com",
-  "logo": "https://example.com/logo.png"
+  "logo": "https://example.com/logo.png",
+  "theme": {
+    "primary": "#6D28D9",
+    "secondary": "#0EA5E9",
+    "background": "#0B1220",
+    "text": "#FFFFFF"
+  }
 }
 ```
 
@@ -116,7 +147,13 @@ curl -X POST "http://localhost:3000/api/v1/eventplanners/public/register" ^
     "_id": "507f1f77bcf86cd799439011",
     "name": "Mi Organización de Eventos",
     "code": "MIORGA",
-    "adminId": "507f1f77bcf86cd799439012"
+    "adminId": "507f1f77bcf86cd799439012",
+    "theme": {
+      "primary": "#6D28D9",
+      "secondary": "#0EA5E9",
+      "background": "#0B1220",
+      "text": "#FFFFFF"
+    }
   },
   "user": {
     "_id": "507f1f77bcf86cd799439012",
@@ -212,6 +249,7 @@ Esta documentación describe los campos disponibles para la **creación** y **ed
 | `casheaAvailable` | Boolean | - | Activa Cashea con los datos del event planner |
 | `currency` | String | - | Moneda por defecto (ej: "USD", "VES") |
 | `domains` | Array\<String\> | `[]` | Array de dominios asociados |
+| `theme` | Object | - | Paleta de colores del Event Planner. Ver sección “Theme (colores del Event Planner)” |
 
 ### Notas sobre la Creación
 
@@ -299,6 +337,7 @@ Los siguientes campos están **protegidos** y **no pueden ser modificados** desp
 | `casheaAvailable` | Boolean | Activa Cashea con los datos del event planner |
 | `currency` | String | Moneda por defecto |
 | `domains` | Array\<String\> | Array de dominios |
+| `theme` | Object | Paleta de colores del Event Planner (hex). Ver sección “Theme (colores del Event Planner)” |
 
 ### Ejemplo de Edición
 
@@ -316,7 +355,13 @@ const resultado = await eventPlannerServices.updateEventPlanner({
   logo: "https://example.com/nuevo-logo.png",
   currency: "VES",
   digitalBilling: true,
-  domains: ["nuevo-dominio.com"]
+  domains: ["nuevo-dominio.com"],
+  theme: {
+    primary: "#6D28D9",
+    secondary: "#0EA5E9",
+    background: "#0B1220",
+    text: "#FFFFFF"
+  }
 })
 ```
 
@@ -406,6 +451,7 @@ Cuando se actualiza un event planner, se crea automáticamente un registro en `r
 | `noUpdateLocationsCode` | ✅ Opcional | ❌ Protegido | - |
 | `currency` | ✅ Opcional | ✅ Modificable | - |
 | `domains` | ✅ Opcional | ✅ Modificable | Array de strings |
+| `theme` | ✅ Opcional | ✅ Modificable | Paleta de colores (hex) |
 | Todos los campos `aboveFee*` | ✅ Opcional | ✅ Modificable | - |
 | Campos Stripe | ✅ Opcional | ✅ Modificable | - |
 | Otros campos booleanos | ✅ Opcional | ✅ Modificable | - |

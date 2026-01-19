@@ -34,6 +34,7 @@ POST /api/v1/eventplanners/public/register
 | `code` | String | Código del Event Planner (si no se envía, se genera) |
 | `contactEmail` | String | Email de contacto del Event Planner |
 | `logo` | String | Logo del Event Planner |
+| `theme` | Object | Paleta de colores del Event Planner (hex). Claves permitidas: `primary`, `secondary`, `accent`, `background`, `surface`, `text`, `textOnPrimary`, `border`, `success`, `warning`, `danger` |
 
 ### Ejemplo mínimo
 
@@ -45,7 +46,13 @@ POST /api/v1/eventplanners/public/register
   "phone": "04141234567",
   "document": "V12345678",
   "email": "juan@example.com",
-  "organizationName": "Mi Organización de Eventos"
+  "organizationName": "Mi Organización de Eventos",
+  "theme": {
+    "primary": "#6D28D9",
+    "secondary": "#0EA5E9",
+    "background": "#0B1220",
+    "text": "#FFFFFF"
+  }
 }
 ```
 
@@ -76,7 +83,13 @@ Retorna:
     "_id": "507f1f77bcf86cd799439011",
     "name": "Mi Organización de Eventos",
     "code": "MIORGA",
-    "adminId": "507f1f77bcf86cd799439012"
+    "adminId": "507f1f77bcf86cd799439012",
+    "theme": {
+      "primary": "#6D28D9",
+      "secondary": "#0EA5E9",
+      "background": "#0B1220",
+      "text": "#FFFFFF"
+    }
   },
   "user": {
     "_id": "507f1f77bcf86cd799439012",
