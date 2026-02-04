@@ -2,10 +2,14 @@
 
 ## Resumen
 
-Este feature permite que un `Event` defina un flujo alterno para reservas cuando su campo `eventType` sea `"donation"`.
+Este feature agrega un flujo alterno para reservas cuando un evento es de tipo donación.
 
-- `eventType: "normal"` (default): **flujo actual**, sin cambios.
-- `eventType: "donation"`: **flujo de donación**.
+- **Evento**: `Event.eventType`
+  - `"normal"` (default): flujo actual, sin cambios.
+  - `"donation"`: flujo de donación.
+- **Reserva**: `Reservation.reservationType`
+  - `"normal"` (default)
+  - `"donation"` (se setea automáticamente cuando la reserva es de donación)
 
 ---
 
@@ -29,9 +33,7 @@ Este feature permite que un `Event` defina un flujo alterno para reservas cuando
 }
 ```
 
-### Nota
-
-Si no envías `eventType`, el evento queda como `"normal"` por default.
+> Si no envías `eventType`, el evento queda como `"normal"` por default.
 
 ---
 
@@ -61,7 +63,7 @@ Si no envías `eventType`, el evento queda como `"normal"` por default.
 
 ### Reglas del flujo `donation`
 
-Si el evento es `eventType === "donation"`:
+Cuando el evento tiene `eventType === "donation"`:
 
 - Valida `donationAmount` (number > 0).
 - Crea la reserva **sin seatmap / sin plan / sin locations**:
@@ -69,6 +71,7 @@ Si el evento es `eventType === "donation"`:
   - `taxes: []`
   - `tickets.quantity = 1`
   - `currency = event.currency || eventPlanner.currency || "USD"`
+  - `reservationType = "donation"`
   - `price` fijo:
 
 ```js
@@ -89,7 +92,7 @@ Si el evento es `normal` (o no tiene `eventType`), se ejecuta el flujo existente
 
 ## 3) `reprice` en donaciones (sin fees / sin taxes)
 
-Cuando una reserva pertenece a un evento `donation`:
+Cuando una reserva es donación (`reservationType === "donation"`):
 
 - **No** se aplican impuestos/fees (paymentGateway / IVA / IGTF / B9).
 - **No** se muta `reservation.taxes`.
@@ -118,7 +121,16 @@ Cuando se intenta emitir tickets (`issue-tickets`) para una reserva de donación
 
 ## 5) Endpoints de Dashboard (Donaciones)
 
-> Protegidos con `EventPlannerGroup` (similar a otros endpoints de dashboard).
+> Protegidos con `EventPlannerGroup`.
+
+### Regla de filtrado (importante)
+
+Los endpoints de donaciones del dashboard aplican:
+
+- `event: { $in: donationEventIds }` donde `donationEventIds` son **todos los eventos del eventPlanner** con `eventType: "donation"`.
+- `reservationType: "donation"`
+
+> Esto implica que reservas antiguas de donación que no tengan `reservationType` **no aparecerán** hasta ser migradas (ver sección “Migración”).
 
 ### 5.1 Listado paginado
 
@@ -126,10 +138,9 @@ Cuando se intenta emitir tickets (`issue-tickets`) para una reserva de donación
 
 #### Query params
 
-- `event` (opcional): `eventId`
-- `from` (opcional): fecha ISO
-- `to` (opcional): fecha ISO
-- `currency` (opcional): `USD` | `VES` | `EUR` (o lo que use la reserva)
+- `event` (opcional): `eventId` (debe ser un evento donation del eventPlanner)
+- `from` / `to` (opcional): fecha ISO para filtrar por `createdAt`
+- `currency` (opcional)
 - `paymentStatus` (opcional)
 - `reservationStatus` (opcional)
 - `page` (opcional, default `1`)
@@ -148,8 +159,7 @@ Devuelve `{ docs, totalDocs, page, limit, totalPages }`.
 #### Query params
 
 - `event` (opcional)
-- `from` (opcional)
-- `to` (opcional)
+- `from` / `to` (opcional)
 - `currency` (opcional)
 - `paymentStatus` (opcional)
 - `reservationStatus` (opcional)
@@ -157,19 +167,32 @@ Devuelve `{ docs, totalDocs, page, limit, totalPages }`.
 #### Respuesta
 
 - `overall`: `{ count, totalAmount }`
-- `totalsByCurrency`: lista de totales por moneda
+- `totalsByCurrency`: totales por moneda
 - `seriesByDay`: serie diaria (`YYYY-MM-DD`) por moneda
 
 ---
 
-## 6) Verificación rápida (manual)
+## 6) Migración (si ya existían donaciones antes de `reservationType`)
+
+Si existían reservas de donación creadas antes de este cambio, podrían tener:
+
+- evento con `eventType: "donation"`
+- pero reserva sin `reservationType`
+
+Para que aparezcan en el dashboard, deben actualizarse a:
+
+- `reservationType: "donation"`
+
+---
+
+## 7) Checklist rápido (manual)
 
 - Crear/editar un evento con `eventType: "donation"`.
 - `POST /api/v1/reservationsV2` con `donationAmount`.
-  - Verificar: `locations=[]`, `taxes=[]`, `tickets.quantity=1`, `price.totalAmount=donationAmount`.
+  - Verificar: `reservationType="donation"`, `locations=[]`, `taxes=[]`, `tickets.quantity=1`, `price.totalAmount=donationAmount`.
 - Ejecutar un flujo de pago que invoque `reprice` (ej: BNCPM):
   - Verificar: no agrega fees/taxes, pero sí retorna `totalAmountVES`.
-- Emitir tickets (issue) para la reserva:
+- Emitir (issue) para la reserva:
   - Verificar: no crea tickets y envía email de confirmación.
 - Consultar dashboard:
   - `GET /api/v1/dashboard/donations`
