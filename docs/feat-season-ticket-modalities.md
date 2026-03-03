@@ -165,10 +165,58 @@ checkEvents: [{ event, issueDate, userCheck, amountUsed }]  // amountUsed = mont
 | `electronic-ticket-default.js` | Mostrar "Usos: X de N" (byUse) y "Saldo: $X" (byBalance) |
 | `ticket-info.js` | `usesRemaining`, `balanceRemaining` |
 | `get-user-ticket.js` | Incluir `balance`, `quantityChecks`, `numberChecked`, `seasonTicket` |
+| `ticket-transaction.js` | Use case para consultar transacciones de tickets multi-check |
+| `build-locations-event.js` / `build-locations-event-v2.js` | Incluir `isMultiCheck`, `quantityChecks`, `numberChecked`; status `pending_issue` si hay canjes disponibles |
+| `tickets-users.js` / `userTickets` | Los tickets incluyen `quantityChecks`, `numberChecked`, `isMultiCheck` (no se excluyen en el pipeline) |
 
 ---
 
-## 6. Flujos
+## 6. Perfil de usuario
+
+En el perfil de usuario (endpoint `userTickets` / `tickets-users`), los tickets con **`isMultiCheck: true`** deben mostrar:
+
+- **Usos totales:** `quantityChecks`
+- **Usos disponibles:** `quantityChecks - numberChecked` (o 0 si ya no quedan)
+
+Para tickets **byBalance**, mostrar además el **saldo restante:** `balance`.
+
+---
+
+## 7. Endpoint: Ticket Transaction
+
+Consulta las transacciones (canjes) de un ticket multi-check.
+
+**GET** `/api/v1/tickets/transaction/:ticketCode`
+
+**Autenticación:** `EventPlannerGroup`
+
+**Descripción:** Retorna la información de usos y transacciones de un ticket con `isMultiCheck: true`.
+
+**Respuesta 200:**
+
+```json
+{
+  "quantityChecks": 10,
+  "numberChecked": 3,
+  "transactions": [
+    {
+      "event": { "_id": "...", "title": "...", "date": "..." },
+      "userCheck": { "_id": "...", "name": "...", "email": "..." },
+      "issueDate": "...",
+      "amountUsed": 1
+    }
+  ]
+}
+```
+
+**Errores:**
+
+- **404** – Ticket no encontrado
+- **400** – El ticket no es de tipo multi-check (`isMultiCheck !== true`)
+
+---
+
+## 8. Flujos
 
 ### Web: add-reservation-v2 → pago → issue-tickets
 
@@ -184,7 +232,7 @@ checkEvents: [{ event, issueDate, userCheck, amountUsed }]  // amountUsed = mont
 
 ---
 
-## 7. Campo modality (modalidad)
+## 9. Campo modality (modalidad)
 
 El season ticket incluye el campo **`modality`** con los valores:
 
@@ -196,7 +244,7 @@ Si no se indica, el valor por defecto es `byEvent`, manteniendo el comportamient
 
 ---
 
-## 8. Compatibilidad
+## 10. Compatibilidad
 
 - Season tickets existentes: `modality` default `'byEvent'` → sin cambios
 - No requiere migración de datos
